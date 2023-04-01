@@ -4,6 +4,60 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Pango
 import math
 
+############# ANTES DE USAR: ################
+#############################################
+"""Antes de usar, tener en cuenta que es un SO de prototipo, TODAVIA NO ESTA TERMINADO.
+SOLO SIRVE PARA HACER CANALETAS REDUNDAS
+Antes de usar consultar a: martincabanillas@gmail.com para ver las caracteristicas de la herramienta y algunos valores fijos...
+como el valor del avance, el despeje y los huecos. También la ruta donde se crea el archivo: lalala.gcode
+"""
+
+"""Problemas:
+	** El desbaste quedo como 2mm arriba( para que la herramienta tenga contacto con la pieza hay que hacer que baje 2mm por lo menos
+	** tengo mal calculados los huecos???... no, es que la caladura tiene 6.5mm de mas
+	** probar un avance de 0.3 o 0.4
+	** la ranura quedó de 16.5 de ancho #$@#&!!!
+	** creo que se pueden optimizar las pasadas sin la canaleta del inicio
+	el log del creador:
+	 evalCapa
+--------------  capa0 10.0 cant de pasadas 35 ... la medida de la capa esta bien, pero el calado quedo en 16.5!!!!
+						(35 pasadas / 0.2mm de avance me esta dando 7mm)
+--------------  capa1 9.99 cant de pasadas 34
+--------------  capa2 9.97 cant de pasadas 34
+--------------  capa3 9.93 cant de pasadas 34
+--------------  capa4 9.87 cant de pasadas 34
+--------------  capa5 9.8 cant de pasadas 34
+--------------  capa6 9.71 cant de pasadas 33
+--------------  capa7 9.6 cant de pasadas 32
+--------------  capa8 9.47 cant de pasadas 32
+--------------  capa9 9.33 cant de pasadas 31
+--------------  capa10 9.17 cant de pasadas 30
+--------------  capa11 8.98 cant de pasadas 29
+--------------  capa12 8.77 cant de pasadas 28
+--------------  capa13 8.54 cant de pasadas 27
+--------------  capa14 8.28 cant de pasadas 26
+--------------  capa15 8.0 cant de pasadas 25
+--------------  capa16 7.68 cant de pasadas 23
+--------------  capa17 7.33 cant de pasadas 21
+--------------  capa18 6.94 cant de pasadas 19
+--------------  capa19 6.5 cant de pasadas 17
+--------------  capa20 6.0 cant de pasadas 15
+--------------  capa21 5.43 cant de pasadas 12
+--------------  capa22 4.75 cant de pasadas 8
+--------------  capa23 1 cant de pasadas -10
+2599
+
+	
+"""
+"""Resultado de la primer pieza:
+	*profundidad OK
+	*diametro 16.5 (ERROR DE CALCULO???
+	*demora: 3:26:26 (2584 ordenes)
+	** el desbastado es parejo y simetrico... un medio caño perfecto
+"""
+
+
+
 class MyWindow(Gtk.Window):
 	def __init__(self):
 		super().__init__(title="Hola W")
@@ -128,13 +182,13 @@ class MyWindow(Gtk.Window):
 		
 		self.add(gri) #self.cajaPrincipal)
 		
-		self.ancho.set_text("8")
+		self.ancho.set_text("10")
 		self.largo.set_text("70")
-		self.prof.set_text("4")
-		self.altPieza.set_text("12")
+		self.prof.set_text("5")
+		self.altPieza.set_text("15")
 		self.diamH.set_text("3")
 		self.despeje.set_text("9")
-		self.calcular(self,0.2)
+		#self.calcular(self,0.2)
 		
 		#self.anchoDeCapa()
 		
@@ -144,6 +198,7 @@ class MyWindow(Gtk.Window):
 	agregar cuanto baja Z(cambiar 3; 3.2 y 0.2 y el valor de debvaste
 	agregar la distancia del punto de inicio(0,0,0) al comienzo del ranurado
 	agregar notas sobre la UBICACION de la pieza
+	agregar datos: cant de vueltas, cant de capas
 	"""
 	def calcular(self, widget, vd=0.2):
 		print("Calcular...")
@@ -170,26 +225,31 @@ class MyWindow(Gtk.Window):
 		
 		## unos huecos de referencia
 		
-		"""pendiente los huecos
-		huecoX1 =  round(float((despeje) / 2) + 1.5, 2)
-		huecoY1 = huecoX1 
-		huecoY2 = largo - huecoX1 
-		huecoX2 = despeje + ancho + huecoX1
-		self.textbuffer.insert_at_cursor("Z15\n" )
-		self.textbuffer.insert_at_cursor("X" + str(round(huecoX1, 2)) + "Y" + str(round(huecoY1))  + "\n" ) #6.6
-		self.textbuffer.insert_at_cursor("Z9\n" )
-		self.textbuffer.insert_at_cursor("Z15\n" )
-		self.textbuffer.insert_at_cursor("Y" + str(round(huecoY2))  + "\n" ) #6.64
-		self.textbuffer.insert_at_cursor("Z9\n" )
-		self.textbuffer.insert_at_cursor("Z15\n" )
-		self.textbuffer.insert_at_cursor(";fin\n" )
-		self.textbuffer.insert_at_cursor("X" + str(round(huecoX2))  + "\n" ) 
-		self.textbuffer.insert_at_cursor(";fin\n" )
-		self.textbuffer.insert_at_cursor("Z9\n" )
-		self.textbuffer.insert_at_cursor("Z15\n" )
-		self.textbuffer.insert_at_cursor("Y" + str(round(huecoY1, 2)) + "\n" )
-		self.textbuffer.insert_at_cursor(";fin\n" )"""
+		#pendiente los huecos
+		huecoX1 =  round(float(despeje) - (3 + 1.5), 2) # 3mm antes de la caladura (1.5 radio de la herramienta) x4.5
+		huecoY1 = 1.5 + 3 # la ubicacion Y es a 3mm del borde(1.5 radio de la herramienta) y4.5
+		huecoY2 = largo - 3 - 1.5 # manteniendo la pos de X llevo a Y hasta 3mm antes del borde y65.5 
+		huecoX2 = despeje + ancho + 3 + 1.5 #manteniendo la pos de Y llevo el eje X a 3mm despues de la ranura x21.5  
+		self.textbuffer.insert_at_cursor(";Hueco...\n\n" )
+		self.textbuffer.insert_at_cursor("Z17\n" )
+		self.textbuffer.insert_at_cursor("X" + str(round(huecoX1, 2)) + "Y" + str(round(huecoY1))  + "\n" ) # 3mm antes de la caladura (1.5 radio de la herramienta) x4.5 y4.5
+		self.textbuffer.insert_at_cursor("Z10\n" )
+		self.textbuffer.insert_at_cursor("Z17\n" )
+		self.textbuffer.insert_at_cursor("Y" + str(round(huecoY2))  + "\n" ) # manteniendo la pos de X llevo a Y hasta 3mm antes del borde x4.5 y65.5
+		self.textbuffer.insert_at_cursor("Z10\n" )
+		self.textbuffer.insert_at_cursor("Z17\n" )
+		#self.textbuffer.insert_at_cursor(";fin\n" )
+		self.textbuffer.insert_at_cursor("X" + str(round(huecoX2))  + "\n" ) #manteniendo la pos de Y llevo el eje X a 3mm despues de la ranura x21.5 y65.5 
+		#self.textbuffer.insert_at_cursor(";fin\n" )
+		self.textbuffer.insert_at_cursor("Z10\n" )
+		self.textbuffer.insert_at_cursor("Z17\n" )
+		self.textbuffer.insert_at_cursor("Y" + str(round(huecoY1, 2)) + "\n" ) # vuelvo el eje Y para el ultimo hueco x21.5 y4.5
+		self.textbuffer.insert_at_cursor("Z10\n" )
+		self.textbuffer.insert_at_cursor("Z17\n" )
+		#self.textbuffer.insert_at_cursor(";fin\n" )
 		### ranura
+		self.textbuffer.insert_at_cursor(";ranura...\n\n" )
+		####ubicacion
 		self.textbuffer.insert_at_cursor("X" + str(round(ubicX, 2)) + "\n" )
 		self.textbuffer.insert_at_cursor("Y000\n") ##\n ;vuelta" + str(fila) +"\n\n"  )
 		
@@ -240,9 +300,10 @@ class MyWindow(Gtk.Window):
 		#print("f in ", filasInicial)
 		medioX = float(round(despeje + (ancho/2), 2))
 		dicc = self.evalCapa(ancho)  #info del largo de las capas
-		print("ddiiiccc", dicc)
+		#print("ddiiiccc", dicc)
 		#dicc = dato[1]   #info del largo de las capas
 		#self.textbuffer.insert_at_cursor("\n;comienza desbaste de capas y filas\n" )
+		self.textbuffer.insert_at_cursor(";medio caño...\n\n" )
 		for capa in dicc:
 			# las FILAS varian de acuerdo al ancho de capa...
 			#dicc = self.evalCapa(ancho)
